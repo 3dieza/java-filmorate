@@ -96,29 +96,6 @@ class FilmServiceTest {
     }
 
     @Test
-    void createFilm_ShouldThrowException_WhenNameIsEmpty() {
-        // Arrange
-        Film film = Mocks.getRandomFilm();
-        film.setName("");  // Пустое название
-
-        // Act & Assert
-        ValidationException exception = assertThrows(ValidationException.class, () -> filmService.createFilm(film));
-        assertTrue(exception.getMessage().contains("[name: не должно быть пустым]"));
-    }
-
-    @Test
-    void createFilm_ShouldThrowException_WhenDescriptionIsTooLong() {
-        // Arrange
-        Film film = Mocks.getRandomFilm();
-        String longDescription = "A".repeat(201);  // Описание длиной более 200 символов
-        film.setDescription(longDescription);
-
-        // Act & Assert
-        ValidationException exception = assertThrows(ValidationException.class, () -> filmService.createFilm(film));
-        assertTrue(exception.getMessage().contains("[description: Максимальная длина описания — 200 символов]"));
-    }
-
-    @Test
     void createFilm_ShouldThrowException_WhenReleaseDateIsBefore1895() {
         // Arrange
         Film film = Mocks.getRandomFilm();

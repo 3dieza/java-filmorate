@@ -10,7 +10,7 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.ErrorResponse;
 
-import java.util.List;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -19,11 +19,11 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex) {
         BindingResult bindingResult = ex.getBindingResult();
 
-        List<String> errors = bindingResult.getFieldErrors().stream()
+        String errors = bindingResult.getFieldErrors().stream()
                 .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
-                .toList();
+                .collect(Collectors.joining(", "));
 
-        ErrorResponse errorResponse = new ErrorResponse("400", errors.toString());
+        ErrorResponse errorResponse = new ErrorResponse("400", "[" + errors + "]");
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
