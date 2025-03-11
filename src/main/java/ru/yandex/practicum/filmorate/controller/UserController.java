@@ -50,8 +50,8 @@ public class UserController {
     }
 
     @PutMapping("/{id}/friends/{friend_id}")
-    public ResponseEntity<User> addFriend(@PathVariable Long id, @PathVariable Long friend_id) {
-        User updatedUser = userService.addFriend(id, friend_id);
+    public ResponseEntity<User> addFriend(@PathVariable Long id, @PathVariable("friend_id") Long friendId) {
+        User updatedUser = userService.addFriend(id, friendId);
         return ResponseEntity.ok(updatedUser);
     }
 
@@ -67,8 +67,8 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}/friends/{friend_id}")
-    public void deleteFriend(@PathVariable Long id, @PathVariable Long friend_id) {
-        userService.deleteFriend(id, friend_id);
+    public void deleteFriend(@PathVariable Long id, @PathVariable("friend_id") Long friendId) {
+        userService.deleteFriend(id, friendId);
     }
 
     @GetMapping("/{id}/friends/common/{otherId}")
