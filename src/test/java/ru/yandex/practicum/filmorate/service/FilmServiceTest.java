@@ -49,10 +49,11 @@ class FilmServiceTest {
 
         // Act
         boolean result = filmService.addLike(filmId, userId);
+        Set<Long> likes = film.getLikes();
 
         // Assert
         assertTrue(result);
-        assertTrue(filmService.getLikes(filmId).contains(userId));
+        assertTrue(likes.contains(userId));
         verify(filmStorage, times(1)).getFilmById(filmId);
         verify(userStorage, times(1)).findById(userId);
     }
