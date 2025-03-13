@@ -3,26 +3,31 @@ package ru.yandex.practicum.filmorate.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import ru.yandex.practicum.filmorate.Mocks;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.Month;
+import java.util.List;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class FilmServiceTest {
 
     @InjectMocks
     private FilmService filmService;
+
+    @Mock
+    private UserStorage userStorage;
+
+    @Mock
+    private FilmStorage filmStorage;
 
     @BeforeEach
     void setUp() {
@@ -30,90 +35,180 @@ class FilmServiceTest {
     }
 
     @Test
-    void createFilm_ShouldCreateFilm_WhenValidData() {
+    void addLike_ShouldAddLike_WhenValidUserAndFilm() {
         // Arrange
-        Film film = Mocks.getRandomFilm();
+        Long filmId = 1L;
+        Long userId = 2L;
+        Film film = new Film();
+        film.setId(filmId);
+        User user = new User();
+        user.setId(userId);
+
+        when(filmStorage.getFilmById(filmId)).thenReturn(film);
+        when(userStorage.findById(userId)).thenReturn(user);
 
         // Act
-        Film createdFilm = filmService.createFilm(film);
+        boolean result = filmService.addLike(filmId, userId);
+        Set<Long> likes = film.getLikes();
 
         // Assert
-        assertNotNull(createdFilm.getId());
-        assertEquals(film.getName(), createdFilm.getName());
-        assertEquals(film.getDescription(), createdFilm.getDescription());
-        assertEquals(film.getReleaseDate(), createdFilm.getReleaseDate());
-        assertEquals(film.getDuration(), createdFilm.getDuration());
+        assertTrue(result);
+        assertTrue(likes.contains(userId));
+        verify(filmStorage, times(1)).getFilmById(filmId);
+        verify(userStorage, times(1)).findById(userId);
     }
 
     @Test
-    void updateFilm_ShouldUpdateFilm_WhenValidData() {
+    void addLike_ShouldThrowNotFoundException_WhenFilmNotFound() {
         // Arrange
-        Film film = Mocks.getRandomFilm();
-        Film createdFilm = filmService.createFilm(film);
+        Long filmId = 1L;
+        Long userId = 2L;
 
-        createdFilm.setName("Updated Name");
-
-        // Act
-        Film updatedFilm = filmService.updateFilm(createdFilm);
-
-        // Assert
-        assertEquals("Updated Name", updatedFilm.getName());
-    }
-
-    @Test
-    void updateFilm_ShouldThrowException_WhenFilmNotFound() {
-        // Arrange
-        Film film = Mocks.getRandomFilm();
-        film.setId(999L);
+        when(filmStorage.getFilmById(filmId)).thenReturn(null);
 
         // Act & Assert
-        NotFoundException exception = assertThrows(NotFoundException.class, () -> filmService.updateFilm(film));
-        assertEquals("Фильм с таким id не найден", exception.getMessage());
+        NotFoundException exception = assertThrows(NotFoundException.class, () -> filmService.addLike(filmId, userId));
+        assertEquals("Film or user not found", exception.getMessage());
     }
 
     @Test
-    void isReleaseDateValid_ShouldReturnTrue_WhenDateIsAfterMinDate() {
+    void addLike_ShouldThrowNotFoundException_WhenUserNotFound() {
         // Arrange
-        LocalDate validDate = LocalDate.of(2000, Month.JANUARY, 1);
+        Long filmId = 1L;
+        Long userId = 2L;
+        Film film = new Film();
+        film.setId(filmId);
 
-        // Act
-        boolean isValid = filmService.isReleaseDateValid(validDate);
-
-        // Assert
-        assertTrue(isValid);
-    }
-
-    @Test
-    void isReleaseDateValid_ShouldReturnFalse_WhenDateIsBeforeMinDate() {
-        // Arrange
-        LocalDate invalidDate = LocalDate.of(1890, Month.JANUARY, 1);
-
-        // Act
-        boolean isValid = filmService.isReleaseDateValid(invalidDate);
-
-        // Assert
-        assertFalse(isValid);
-    }
-
-    @Test
-    void createFilm_ShouldThrowException_WhenReleaseDateIsBefore1895() {
-        // Arrange
-        Film film = Mocks.getRandomFilm();
-        film.setReleaseDate(LocalDate.of(1890, 1, 1));
+        when(filmStorage.getFilmById(filmId)).thenReturn(film);
+        when(userStorage.findById(userId)).thenReturn(null);
 
         // Act & Assert
-        ValidationException exception = assertThrows(ValidationException.class, () -> filmService.createFilm(film));
-        assertTrue(exception.getMessage().contains("[releaseDate: Дата релиза не может быть раньше 28 декабря 1895 года]"));
+        NotFoundException exception = assertThrows(NotFoundException.class, () -> filmService.addLike(filmId, userId));
+        assertEquals("Film or user not found", exception.getMessage());
     }
 
     @Test
-    void createFilm_ShouldThrowException_WhenDurationIsZeroOrNegative() {
+    void deleteLike_ShouldRemoveLike_WhenLikeExists() {
         // Arrange
-        Film film = Mocks.getRandomFilm();
-        film.setDuration(Duration.ofMinutes(0));
+        Long filmId = 1L;
+        Long userId = 2L;
+        Film film = new Film();
+        film.setId(filmId);
+        User user = new User();
+        user.setId(userId);
+
+        when(filmStorage.getFilmById(filmId)).thenReturn(film);
+        when(userStorage.findById(userId)).thenReturn(user);
+
+        filmService.addLike(filmId, userId);
+        // Act
+        boolean result = filmService.deleteLike(filmId, userId);
+
+        // Assert
+        assertTrue(result);
+        assertTrue(filmService.getLikes(filmId).isEmpty());
+    }
+
+    @Test
+    void deleteLike_ShouldThrowNotFoundException_WhenFilmNotFound() {
+        // Arrange
+        Long filmId = 1L;
+        Long userId = 2L;
+
+        when(filmStorage.getFilmById(filmId)).thenReturn(null);
 
         // Act & Assert
-        ValidationException exception = assertThrows(ValidationException.class, () -> filmService.createFilm(film));
-        assertTrue(exception.getMessage().contains("[duration: Продолжительность фильма должна быть положительным числом]"));
+        NotFoundException exception = assertThrows(NotFoundException.class, () -> filmService.deleteLike(filmId, userId));
+        assertEquals("Нет фильма или юзера", exception.getMessage());
+    }
+
+    @Test
+    void deleteLike_ShouldThrowValidationException_WhenNoLikeExists() {
+        // Arrange
+        Long filmId = 1L;
+        Long userId = 2L;
+        Film film = new Film();
+        film.setId(filmId);
+        User user = new User();
+        user.setId(userId);
+
+        when(filmStorage.getFilmById(filmId)).thenReturn(film);
+        when(userStorage.findById(userId)).thenReturn(user);
+
+        // Act & Assert
+        ValidationException exception = assertThrows(ValidationException.class, () -> filmService.deleteLike(filmId, userId));
+        assertEquals("У фильма нет лайков", exception.getMessage());
+    }
+
+    @Test
+    void getLikes_ShouldReturnLikes_WhenLikesExist() {
+        // Arrange
+        Long filmId = 1L;
+        Long userId = 2L;
+        Film film = new Film();
+        film.setId(filmId);
+        User user = new User();
+        user.setId(userId);
+
+        when(filmStorage.getFilmById(filmId)).thenReturn(film);
+        when(userStorage.findById(userId)).thenReturn(user);
+
+        filmService.addLike(filmId, userId);
+
+        // Act
+        Set<Long> likes = filmService.getLikes(filmId);
+
+        // Assert
+        assertNotNull(likes);
+        assertTrue(likes.contains(userId));
+    }
+
+    @Test
+    void findPopularFilm_ShouldReturnFilmsSortedByLikes() {
+        // Arrange
+        Film film1 = new Film();
+        film1.setId(1L);
+        Film film2 = new Film();
+        film2.setId(2L);
+        Film film3 = new Film();
+        film3.setId(3L);
+
+        when(filmStorage.getFilms()).thenReturn(List.of(film1, film2, film3));
+
+        when(filmStorage.getFilmById(1L)).thenReturn(film1);
+        when(filmStorage.getFilmById(2L)).thenReturn(film2);
+
+        when(userStorage.findById(100L)).thenReturn(new User());
+        when(userStorage.findById(101L)).thenReturn(new User());
+        when(userStorage.findById(102L)).thenReturn(new User());
+
+        filmService.addLike(1L, 100L);
+        filmService.addLike(1L, 101L);
+        filmService.addLike(2L, 102L);
+
+        // Act
+        List<Film> popularFilms = filmService.findPopularFilm(2L);
+
+        // Assert
+        assertEquals(2, popularFilms.size());
+        assertEquals(1L, popularFilms.get(0).getId());
+        assertEquals(2L, popularFilms.get(1).getId());
+    }
+
+    @Test
+    void findPopularFilm_ShouldReturnTop10_WhenCountIsZeroOrNegative() {
+        // Arrange
+        Film film1 = new Film();
+        film1.setId(1L);
+        Film film2 = new Film();
+        film2.setId(2L);
+
+        when(filmStorage.getFilms()).thenReturn(List.of(film1, film2));
+
+        // Act
+        List<Film> popularFilms = filmService.findPopularFilm(0L);
+
+        // Assert
+        assertEquals(2, popularFilms.size()); // Все фильмы, потому что их всего 2
     }
 }
