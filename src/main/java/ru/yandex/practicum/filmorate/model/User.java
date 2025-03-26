@@ -11,7 +11,7 @@ import lombok.experimental.FieldDefaults;
 import java.time.LocalDate;
 
 /**
- * User.
+ * User
  */
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
