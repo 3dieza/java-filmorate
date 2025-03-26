@@ -30,4 +30,6 @@ public class User {
     LocalDate birthday;
 
     String name;
+
+    String status;
 }

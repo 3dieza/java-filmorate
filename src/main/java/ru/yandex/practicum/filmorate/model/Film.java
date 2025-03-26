@@ -17,6 +17,7 @@ import ru.yandex.practicum.filmorate.util.DurationSerializer;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -44,4 +45,8 @@ public class Film {
     @Getter
     @JsonIgnore
     Set<Long> likes = new HashSet<>();
+
+    List<String> genre;
+
+    String rating;
 }
