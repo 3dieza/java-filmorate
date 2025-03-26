@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+//import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jakarta.validation.constraints.NotBlank;
@@ -16,7 +17,9 @@ import ru.yandex.practicum.filmorate.util.DurationSerializer;
 
 import java.time.Duration;
 import java.time.LocalDate;
+//import java.util.ArrayList;
 import java.util.HashSet;
+//import java.util.List;
 import java.util.Set;
 
 /**
@@ -24,6 +27,7 @@ import java.util.Set;
  */
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
+//@JsonInclude(JsonInclude.Include.NON_NULL)
 public class Film {
     Long id;
 
@@ -44,4 +48,7 @@ public class Film {
     @Getter
     @JsonIgnore
     Set<Long> likes = new HashSet<>();
+
+//    List<Genre> genres = new ArrayList<>();
+//    Rating mpa;
 }
