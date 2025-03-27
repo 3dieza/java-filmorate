@@ -1,6 +1,6 @@
 package ru.yandex.practicum.filmorate.model;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+//import com.fasterxml.jackson.annotation.JsonInclude;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PastOrPresent;
@@ -12,11 +12,11 @@ import lombok.experimental.FieldDefaults;
 import java.time.LocalDate;
 
 /**
- * User
+ * User.
  */
 @Data
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@JsonInclude(JsonInclude.Include.NON_NULL)
+//@JsonInclude(JsonInclude.Include.NON_NULL)
 public class User {
     Long id;
 
@@ -32,6 +32,6 @@ public class User {
     LocalDate birthday;
 
     String name;
-
-    String status;
+//
+//    String status;
 }
