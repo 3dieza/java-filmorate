@@ -1,14 +1,12 @@
 # Filmorate: ER-диаграмма базы данных
 
-## ER-диаграмма
-
-![ER-диаграмма](src/main/resources/db/er_diagram.png)
+![ER-диаграмма](src/main/resources/er_diagram.png)
 
 ---
 
 ## Описание схемы
 
-Проект Filmorate хранит информацию о фильмах, жанрах, рейтингах, пользователях, их дружбе и лайках. Схема базы данных нормализована и поддерживает основные бизнес-процессы приложения.
+Проект Filmorate хранит информацию о фильмах, жанрах, рейтингах (MPA), пользователях, их лайках и **односторонней дружбе**. 
 
 ### Таблицы:
 
@@ -16,9 +14,9 @@
 - **genre** — список жанров.
 - **film_genre** — связь многие-ко-многим между фильмами и жанрами.
 - **rating** — рейтинги MPA (G, PG, PG-13, R, NC-17).
-- **user** — пользователи системы.
+- **users** — пользователи системы.
 - **film_likes** — пользователи ставят лайки фильмам (many-to-many).
-- **user_friends** — система дружбы между пользователями с флагом подтверждения.
+- **user_friends** — система **односторонней дружбы** (user подписан на friend).
 
 ---
 
@@ -28,7 +26,7 @@
 ```sql
 SELECT f.*
 FROM film f
-JOIN film_likes fl ON f.id = fl.film_id
+LEFT JOIN film_likes fl ON f.id = fl.film_id
 GROUP BY f.id
 ORDER BY COUNT(fl.user_id) DESC
 LIMIT 10;
@@ -36,19 +34,18 @@ LIMIT 10;
 
 ### 👥 Общие друзья двух пользователей:
 ```sql
-SELECT f.friend_id
-FROM user_friends f
-JOIN user_friends f2 ON f.friend_id = f2.friend_id
-WHERE f.user_id = 1 AND f2.user_id = 2
-  AND f.status = 'confirmed' AND f2.status = 'confirmed';
+SELECT uf1.friend_id
+FROM user_friends uf1
+         JOIN user_friends uf2 ON uf1.friend_id = uf2.friend_id
+WHERE uf1.user_id = 1 AND uf2.user_id = 2;
 ```
 
 ### 🎥 Фильмы определённого жанра:
 ```sql
 SELECT f.*
 FROM film f
-JOIN film_genre fg ON f.id = fg.film_id
-JOIN genre g ON fg.genre_id = g.id
+         JOIN film_genre fg ON f.id = fg.film_id
+         JOIN genre g ON fg.genre_id = g.id
 WHERE g.name = 'Комедия';
 ```
 
@@ -56,14 +53,8 @@ WHERE g.name = 'Комедия';
 ```sql
 SELECT f.name, COUNT(fl.user_id) AS like_count
 FROM film f
-LEFT JOIN film_likes fl ON f.id = fl.film_id
+         LEFT JOIN film_likes fl ON f.id = fl.film_id
 GROUP BY f.id, f.name;
 ```
 
 ---
-
-## 📌 Заметки
-
-- ER-диаграмма экспортирована из dbdiagram.io.
-- Все таблицы приведены к 3НФ.
-- Поддерживается расширение функциональности (например, списки рекомендаций или отзывы).

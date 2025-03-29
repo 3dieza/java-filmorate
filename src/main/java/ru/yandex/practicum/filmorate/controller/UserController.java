@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.UserService;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.UserDbStorage;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -24,27 +24,27 @@ import java.util.stream.Collectors;
 @RequestMapping("/users")
 public class UserController {
 
-    private final InMemoryUserStorage inMemoryUserStorage;
+    private final UserDbStorage userDbStorage;
     private final UserService userService;
 
-    public UserController(InMemoryUserStorage inMemoryUserStorage, UserService userService) {
-        this.inMemoryUserStorage = inMemoryUserStorage;
+    public UserController(UserDbStorage userDbStorage, UserService userService) {
+        this.userDbStorage = userDbStorage;
         this.userService = userService;
     }
 
     @PostMapping
     public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
-        return ResponseEntity.ok(inMemoryUserStorage.createUser(user));
+        return ResponseEntity.ok(userDbStorage.createUser(user));
     }
 
     @PutMapping
     public ResponseEntity<User> updateUser(@Valid @RequestBody User user) {
-        return ResponseEntity.ok(inMemoryUserStorage.updateUser(user));
+        return ResponseEntity.ok(userService.updateUser(user));
     }
 
     @GetMapping
     public Collection<User> getUsers() {
-        return inMemoryUserStorage.getUsers();
+        return userDbStorage.getUsers();
     }
 
     @PutMapping("/{id}/friends/{friend_id}")
