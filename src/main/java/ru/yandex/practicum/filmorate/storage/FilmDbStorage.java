@@ -142,9 +142,9 @@ public class FilmDbStorage implements FilmStorage {
 
         // Жанры
         String genreSql = """
-                    SELECT g.id, g.name 
-                    FROM genre g 
-                    JOIN film_genre fg ON g.id = fg.genre_id 
+                    SELECT g.id, g.name
+                    FROM genre g
+                    JOIN film_genre fg ON g.id = fg.genre_id
                     WHERE fg.film_id = ?
                 """;
         List<Genre> genres = jdbcTemplate.query(genreSql, (rs, rowNum) -> {
