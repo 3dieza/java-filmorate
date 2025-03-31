@@ -13,7 +13,6 @@ import ru.yandex.practicum.filmorate.storage.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -106,7 +105,7 @@ public class FilmService {
         if (film == null) {
             throw new NotFoundException("Фильм не найден: id=" + filmId);
         }
-        return Collections.unmodifiableSet(film.getLikes());
+        return getLikesByFilmId(filmId);
     }
 
     public List<Film> findPopularFilm(Long count) {
