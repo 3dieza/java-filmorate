@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -49,7 +50,7 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         // Добавление жанров
-        if (film.getGenres() != null && !film.getGenres().isEmpty()) {
+        if (!CollectionUtils.isEmpty(film.getGenres())) {
             String genreSql = "MERGE INTO film_genre (film_id, genre_id) KEY(film_id, genre_id) VALUES (?, ?)";
             for (Genre genre : film.getGenres()) {
                 jdbcTemplate.update(genreSql, film.getId(), genre.getId());

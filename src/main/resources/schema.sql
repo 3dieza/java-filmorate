@@ -51,3 +51,9 @@ CREATE TABLE IF NOT EXISTS user_friends (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (friend_id) REFERENCES users(id)
 );
+
+-- Уникальный индекс на email
+CREATE UNIQUE INDEX IF NOT EXISTS user_email_uindex ON users (email);
+
+-- Уникальный индекс на login
+CREATE UNIQUE INDEX IF NOT EXISTS user_login_uindex ON users (login);

@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.jdbc.Sql;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserDbStorage;
 
@@ -16,7 +16,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @JdbcTest
 @Import(UserDbStorage.class)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@Sql(statements = {
+        "DELETE FROM user_friends",
+        "DELETE FROM film_likes",
+        "DELETE FROM film_genre",
+        "DELETE FROM film",
+        "DELETE FROM users"
+}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class UserServiceTest {
 
     @Autowired
