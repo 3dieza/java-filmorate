@@ -5,22 +5,28 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Rating;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.UserDbStorage;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
+@Import({UserDbStorage.class, FilmDbStorage.class})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
+@ActiveProfiles("test")
 class FilmServiceTest {
 
     @Autowired
@@ -32,19 +38,38 @@ class FilmServiceTest {
     private Film film;
     private User user;
 
+
     @BeforeEach
-    void setup() {
-        user = userStorage.createUser(new User(null, "like@ya.ru", "liker",
-                LocalDate.of(1990, 1, 1), "Лайкнутый", "active"));
+    void setup(@Autowired JdbcTemplate jdbcTemplate) {
+        jdbcTemplate.update("DELETE FROM film_likes");
+        jdbcTemplate.update("DELETE FROM film_genre");
+        jdbcTemplate.update("DELETE FROM film");
+        jdbcTemplate.update("DELETE FROM user_friends");
+        jdbcTemplate.update("DELETE FROM users");
 
         film = new Film();
-        film.setName("Лайкаемый фильм");
-        film.setDescription("Фильм для теста лайков");
+        film.setName("Test Film");
+        film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(Duration.ofMinutes(100));
+        film.setDuration(Duration.ofMinutes(120));
         film.setMpa(new Rating(1, null));
 
+        Genre genre = new Genre();
+        genre.setId(1);
+        film.setGenres(List.of(genre));
+
+        user = userStorage.createUser(new User(null, "test+" + System.nanoTime() + "@mail.com", "testUser_" + System.nanoTime(),
+                LocalDate.of(1980, 1, 1), "Test User", null)
+        );
         film = filmService.createFilm(film);
+    }
+
+    @Test
+    void shouldCreateFilm() {
+        assertThat(film.getId()).isNotNull();
+        assertThat(film.getName()).isEqualTo("Test Film");
+        assertThat(film.getGenres()).isNotEmpty();
+        assertThat(film.getMpa()).isNotNull();
     }
 
     @Test

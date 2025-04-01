@@ -3,9 +3,10 @@ package ru.yandex.practicum.filmorate.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.jdbc.JdbcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.jdbc.Sql;
+import org.springframework.test.context.ActiveProfiles;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserDbStorage;
 
@@ -16,13 +17,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @JdbcTest
 @Import(UserDbStorage.class)
-@Sql(statements = {
-        "DELETE FROM user_friends",
-        "DELETE FROM film_likes",
-        "DELETE FROM film_genre",
-        "DELETE FROM film",
-        "DELETE FROM users"
-}, executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.ANY)
+@ActiveProfiles("test")
 class UserServiceTest {
 
     @Autowired
@@ -33,9 +29,10 @@ class UserServiceTest {
 
     @BeforeEach
     void setUp() {
-        user1 = new User(null, "user1@mail.com", "user1",
+        String uniqueSuffix = String.valueOf(System.nanoTime());
+        user1 = new User(null, "user1+" + uniqueSuffix + "@mail.com", "user1_" + uniqueSuffix,
                 LocalDate.of(1990, 1, 1), "User One", null);
-        user2 = new User(null, "user2@mail.com", "user2",
+        user2 = new User(null, "user2+" + uniqueSuffix + "@mail.com", "user2_" + uniqueSuffix,
                 LocalDate.of(1991, 2, 2), "User Two", null);
     }
 
