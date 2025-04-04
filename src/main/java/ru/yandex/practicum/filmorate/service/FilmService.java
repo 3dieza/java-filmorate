@@ -1,47 +1,68 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.FilmDbStorage;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
+
+import static ru.yandex.practicum.filmorate.util.Validator.validateFilm;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class FilmService {
 
     private final UserStorage userStorage;
     private final FilmStorage filmStorage;
+    private final JdbcTemplate jdbcTemplate;
 
-    public boolean addLike(Long id, Long userId) {
-        log.debug("Попытка добавить лайк: filmId={}, userId={}", id, userId);
+    private final Set<Integer> validGenreIds = new HashSet<>();
+    private final Set<Integer> validRatingIds = new HashSet<>();
 
-        Film film = filmStorage.getFilmById(id);
+    public FilmService(
+            @Qualifier("userDbStorage") UserStorage userStorage,
+            @Qualifier("filmDbStorage") FilmStorage filmStorage,
+            JdbcTemplate jdbcTemplate
+    ) {
+        this.userStorage = userStorage;
+        this.filmStorage = filmStorage;
+        this.jdbcTemplate = jdbcTemplate;
+        loadGenres();
+        loadRatings();
+    }
+
+    public boolean addLike(Long filmId, Long userId) {
+        log.debug("Попытка добавить лайк: filmId={}, userId={}", filmId, userId);
+
+        Film film = filmStorage.getFilmById(filmId);
         User user = userStorage.findById(userId);
+
         if (film == null || user == null) {
-            log.error("Ошибка: Фильм или пользователь не найден (filmId={}, userId={})", id, userId);
-            throw new NotFoundException("Film or user not found");
+            log.error("Ошибка: Фильм или пользователь не найден (filmId={}, userId={})", filmId, userId);
+            throw new NotFoundException("Фильм или пользователь не найден");
         }
-        Set<Long> likes = film.getLikes();
-        boolean existsLikes = likes.contains(user.getId());
-        if (existsLikes) {
-            log.warn("Пользователь уже поставил лайк фильму (filmId={}, userId={})", id, userId);
-            throw new NotFoundException("Пользователь уже ставил лайк");
+
+        if (hasLike(filmId, userId)) {
+            log.warn("Лайк уже существует: filmId={}, userId={}", filmId, userId);
+            throw new ValidationException("Пользователь уже ставил лайк фильму");
         }
-        log.info("Лайк успешно добавлен (filmId={}, userId={})", id, userId);
-        return likes.add(userId);
+
+        String insertSql = "INSERT INTO film_likes (film_id, user_id) VALUES (?, ?)";
+        jdbcTemplate.update(insertSql, filmId, userId);
+
+        log.info("Лайк успешно добавлен (filmId={}, userId={})", filmId, userId);
+        return true;
     }
 
     public boolean deleteLike(Long filmId, Long userId) {
@@ -49,19 +70,34 @@ public class FilmService {
 
         Film film = filmStorage.getFilmById(filmId);
         User user = userStorage.findById(userId);
+
         if (film == null || user == null) {
-            log.error("Ошибка: Фильм или пользователь не найден (filmId={}, userId={})", filmId, userId);
-            throw new NotFoundException("Нет фильма или юзера");
+            throw new NotFoundException("Фильм или пользователь не найден");
         }
-        Set<Long> likes = film.getLikes();
-        boolean existsLikes = likes.contains(user.getId());
-        if (!existsLikes) {
-            log.warn("Попытка удалить лайк, которого нет (filmId={}, userId={})", filmId, userId);
-            throw new ValidationException("У фильма нет лайков");
+
+        if (!hasLike(filmId, userId)) {
+            log.warn("Удаление несуществующего лайка (filmId={}, userId={})", filmId, userId);
+            throw new ValidationException("У фильма нет лайка от пользователя");
         }
-        log.info("Лайк успешно удален (filmId={}, userId={})", filmId, userId);
-        return likes.remove(userId);
+
+        String deleteSql = "DELETE FROM film_likes WHERE film_id = ? AND user_id = ?";
+        jdbcTemplate.update(deleteSql, filmId, userId);
+
+        log.info("Лайк успешно удалён (filmId={}, userId={})", filmId, userId);
+        return true;
     }
+
+    public boolean hasLike(Long filmId, Long userId) {
+        String sql = """
+                    SELECT EXISTS(
+                        SELECT 1
+                        FROM film_likes
+                        WHERE film_id = ? AND user_id = ?
+                    )
+                """;
+        return jdbcTemplate.queryForObject(sql, Boolean.class, filmId, userId);
+    }
+
 
     public Set<Long> getLikes(Long filmId) {
         log.debug("Запрос лайков фильма (filmId={})", filmId);
@@ -69,28 +105,59 @@ public class FilmService {
         if (film == null) {
             throw new NotFoundException("Фильм не найден: id=" + filmId);
         }
-        return Collections.unmodifiableSet(film.getLikes());
+        return getLikesByFilmId(filmId);
     }
 
     public List<Film> findPopularFilm(Long count) {
-        long validCount = count <= 0 ? 10 : count;
+        long validCount = count == null || count <= 0 ? 10 : count;
         log.debug("Запрос популярных фильмов, количество: {}", validCount);
 
-        Collection<Film> filmsCollection = filmStorage.getFilms();
+        String sql = """
+                    SELECT f.*, COUNT(fl.user_id) AS likes_count
+                    FROM film f
+                    LEFT JOIN film_likes fl ON f.id = fl.film_id
+                    GROUP BY f.id
+                    ORDER BY likes_count DESC
+                    LIMIT ?
+                """;
 
-        List<Film> filmsList = filmsCollection.stream()
-                .filter(Objects::nonNull)
-                .toList();
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            FilmDbStorage storage = (FilmDbStorage) filmStorage; // приведение
+            Film film = storage.mapRowToFilm(rs);
+            film.setLikes(getLikesByFilmId(film.getId()));
+            film.setGenres(storage.getGenres(film.getId()));
+            return film;
+        }, validCount);
+    }
 
-        Comparator<Film> likesComparator = Comparator.comparingInt(film ->
-                film.getLikes() != null ? film.getLikes().size() : 0);
+    private Set<Long> getLikesByFilmId(Long filmId) {
+        String sql = "SELECT user_id FROM film_likes WHERE film_id = ?";
+        return new HashSet<>(jdbcTemplate.query(sql, (rs, rowNum) -> rs.getLong("user_id"), filmId));
+    }
 
-        List<Film> popularFilms = filmsList.stream()
-                .sorted(likesComparator.reversed())
-                .limit(validCount)
-                .toList();
+    public Film createFilm(Film film) {
+        if (film.getMpa() == null || !validRatingIds.contains(film.getMpa().getId())) {
+            throw new NotFoundException("Некорректный рейтинг: " + film.getMpa());
+        }
 
-        log.info("Найдено {} популярных фильмов", popularFilms.size());
-        return popularFilms;
+        if (film.getGenres() != null) {
+            for (Genre genre : film.getGenres()) {
+                if (!validGenreIds.contains(genre.getId())) {
+                    throw new NotFoundException("Некорректный жанр: " + genre.getId());
+                }
+            }
+        }
+        validateFilm(film);
+        return filmStorage.createFilm(film);
+    }
+
+    private void loadGenres() {
+        String sql = "SELECT id FROM genre";
+        validGenreIds.addAll(jdbcTemplate.query(sql, (rs, rowNum) -> rs.getInt("id")));
+    }
+
+    private void loadRatings() {
+        String sql = "SELECT id FROM rating";
+        validRatingIds.addAll(jdbcTemplate.query(sql, (rs, rowNum) -> rs.getInt("id")));
     }
 }

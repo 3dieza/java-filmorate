@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
-import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.FilmDbStorage;
 
 import java.util.Collection;
 import java.util.List;
@@ -27,24 +27,24 @@ import java.util.List;
 public class FilmController {
 
     private final FilmService filmService;
-    private final InMemoryFilmStorage inMemoryFilmStorage;
+    private final FilmDbStorage filmDbStorage;
 
     @PostMapping
 
     public ResponseEntity<Film> createFilm(@Valid @RequestBody Film film) {
-        Film createdFilm = inMemoryFilmStorage.createFilm(film);
+        Film createdFilm = filmService.createFilm(film);
         return ResponseEntity.ok(createdFilm);
     }
 
     @PutMapping
     public ResponseEntity<Film> updateFilm(@Valid @RequestBody Film film) {
-        Film updatedFilm = inMemoryFilmStorage.updateFilm(film);
+        Film updatedFilm = filmDbStorage.updateFilm(film);
         return ResponseEntity.ok(updatedFilm);
     }
 
     @GetMapping
     public Collection<Film> getFilms() {
-        return inMemoryFilmStorage.getFilms();
+        return filmDbStorage.getFilms();
     }
 
     @PutMapping("/{id}/like/{userId}")
@@ -62,5 +62,11 @@ public class FilmController {
     @GetMapping("/popular")
     public ResponseEntity<List<Film>> findPopularFilm(@RequestParam(defaultValue = "10") Long count) {
         return ResponseEntity.ok(filmService.findPopularFilm(count));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Film> getFilmById(@PathVariable Long id) {
+        Film film = filmDbStorage.getFilmById(id);
+        return ResponseEntity.ok(film);
     }
 }

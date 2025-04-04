@@ -1,38 +1,42 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class UserService {
 
-    private final InMemoryUserStorage userStorage;
+    private final UserStorage userStorage;
+
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage) {
+        this.userStorage = userStorage;
+    }
 
     public User addFriend(Long id, Long friendId) {
         log.debug("Попытка добавить друга: userId={}, friendId={}", id, friendId);
 
         User user = userStorage.findById(id);
         User friend = userStorage.findById(friendId);
-        if (friend == null || user == null) {
+        if (user == null || friend == null) {
             log.error("Ошибка: Один из пользователей не найден (userId={}, friendId={})", id, friendId);
             throw new NotFoundException("Один из пользователей не найден");
         }
-        if (friend.equals(user)) {
+        if (id.equals(friendId)) {
             log.warn("Попытка добавить самого себя в друзья (userId={})", id);
             throw new ValidationException("Нельзя добавить самого себя");
         }
         userStorage.addNewFriend(user.getId(), friend.getId());
-        log.info("Добавлен друг (userId={}, friendId={})", id, friendId);
+
+        log.info("Пользователь {} добавил в друзья пользователя {}", id, friendId);
         return user;
     }
 
@@ -60,8 +64,9 @@ public class UserService {
             log.error("Ошибка: Пользователь не найден (userId={}, friendId={})", userId, friendId);
             throw new NotFoundException("Пользователь не найден");
         }
-        userStorage.getFriends(user.getId()).remove(friendId);
-        userStorage.getFriends(friend.getId()).remove(userId);
+
+        userStorage.deleteFriend(userId, friendId);
+
         log.info("Пользователь {} удалил из друзей {}", userId, friendId);
     }
 
@@ -88,5 +93,16 @@ public class UserService {
             throw new NotFoundException("Пользователь не найден");
         }
         return user;
+    }
+
+    public User updateUser(User user) {
+        log.debug("Попытка обновить пользователя: {}", user);
+
+        User existing = userStorage.findById(user.getId());
+        if (existing == null) {
+            log.warn("Пользователь с id={} не найден", user.getId());
+            throw new NotFoundException("Пользователь не найден");
+        }
+        return userStorage.updateUser(user);
     }
 }
